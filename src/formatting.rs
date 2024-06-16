@@ -7,6 +7,9 @@ use syntect::parsing::SyntaxSet;
 use syntect::util::LinesWithEndings;
 use termcolor::WriteColor;
 
+use jaq_interpret::{Ctx, FilterT, ParseCtx, RcIter, Val};
+use jaq_parse;
+
 use crate::{buffer::Buffer, cli::Theme};
 
 pub fn get_json_formatter(indent_level: usize) -> jsonxf::Formatter {
@@ -27,6 +30,34 @@ pub fn serde_json_format(indent_level: usize, text: &str, write: impl Write) -> 
     let mut serializer = serde_json::Serializer::with_formatter(write, formatter);
     let mut deserializer = serde_json::Deserializer::from_str(text);
     serde_transcode::transcode(&mut deserializer, &mut serializer)?;
+    Ok(())
+}
+
+pub fn serde_json_format_query(indent_level: usize, text: &str, write: &mut impl Write, query_string: &str) -> io::Result<()> {
+    let json_val: serde_json::Value = serde_json::from_str(text)?;
+
+    let (f, errs) = jaq_parse::parse(query_string, jaq_parse::main());
+    assert_eq!(errs, Vec::new());
+
+    let mut defs = ParseCtx::new(Vec::new());
+    let f = defs.compile(f.unwrap());
+    assert!(defs.errs.is_empty());
+
+    let inputs = RcIter::new(core::iter::empty());
+    let out = f.run((Ctx::new([], &inputs), Val::from(json_val)));
+    for o in out.into_iter() {
+        let val: jaq_interpret::Val = o.map_err(|err| io::Error::new(io::ErrorKind::Other, err.to_string()))?;
+        match val {
+            jaq_interpret::Val::Obj(_) => {
+                let json_val: serde_json::Value = serde_json::from_value(val.into()).unwrap();
+                serde_json::to_writer_pretty( &mut *write, json_val.as_object().unwrap())?;
+            }
+            _ => {
+                write.write(val.to_string().as_bytes())?;
+            }
+        }
+    }
+
     Ok(())
 }
 

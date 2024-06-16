@@ -47,6 +47,8 @@ time = "0.3.16"
 unicode-width = "0.1.9"
 url = "2.2.2"
 ruzstd = { version = "0.6", default-features = false, features = ["std"]}
+jaq-interpret = {version = "1.4.0", features = ["std"]}
+jaq-parse = "1.0.2"
 
 [dependencies.reqwest]
 version = "0.12.3"

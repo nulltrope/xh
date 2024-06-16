@@ -951,6 +951,7 @@ impl Pretty {
 pub struct FormatOptions {
     pub json_indent: Option<usize>,
     pub json_format: Option<bool>,
+    pub json_query: Option<String>,
     pub headers_sort: Option<bool>,
 }
 
@@ -958,6 +959,7 @@ impl FormatOptions {
     pub fn merge(mut self, other: &Self) -> Self {
         self.json_indent = other.json_indent.or(self.json_indent);
         self.json_format = other.json_format.or(self.json_format);
+        self.json_query = other.json_query.clone().or(self.json_query);
         self.headers_sort = other.headers_sort.or(self.headers_sort);
         self
     }
@@ -987,6 +989,9 @@ impl FromStr for FormatOptions {
                 }
                 "json.sort_keys" | "xml.format" | "xml.indent" => {
                     return Err(anyhow!("Unsupported option '{key}'"));
+                }
+                "json.query" => {
+                    format_options.json_query = Some(value.parse().with_context(value_error)?);
                 }
                 _ => {
                     return Err(anyhow!("Unknown option '{key}'"));
@@ -1783,7 +1788,8 @@ mod tests {
             FormatOptions {
                 json_indent: Some(2),
                 headers_sort: Some(false),
-                json_format: None
+                json_format: None,
+                json_query: None
             }
         )
     }
